@@ -136,6 +136,8 @@ runs:
         SECRET: ${{ inputs.secret }}
       with:
         github-token: ${{ inputs.secret != '' && inputs.secret || github.token }}
+        # 400, 401, 403, 404 and 422 are not retried.
+        retries: 3
         script: |
           if (process.env.CAN_SKIP_CHECKS == "false") {
             console.log("Setting CAN_SKIP_CHECKS to false");
