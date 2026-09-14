@@ -107,7 +107,7 @@ runs:
         commit_id="${{ steps.extract-pr-info.outputs.commitId }}"
 
         # Check if the branch history contains the commit
-        if git branch -r --contains "$commit_id" | grep -q "$branch_name"; then
+        if git merge-base --is-ancestor "$commit_id" "$branch_name"; then
           echo "Branch '$branch_name' contains commit '$commit_id'. It is up to date with ${{ steps.extract-pr-info.outputs.targetBranchName }}."
         else
           echo "Branch '$branch_name' does not contain commit '$commit_id'. It is outdated. Setting CAN_SKIP_CHECKS to false."
