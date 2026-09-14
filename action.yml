@@ -33,11 +33,6 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Checkout code
-      uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
-
     - name: Extract PR Number and Commit ID
       id: extract-pr-info
       uses: actions/github-script@v9
@@ -55,6 +50,16 @@ runs:
             console.log(`GITHUB_REF is not a merge queue ref, setting CAN_SKIP_CHECKS to false: ${githubRef}`);
             core.exportVariable('CAN_SKIP_CHECKS', 'false');
           }
+
+    # The steps below read tree hashes of the full history. These are part of the
+    # commit objects, so the history needs no file content. The working tree is
+    # only materialised for the last commit.
+    - name: Checkout code
+      if: env.CAN_SKIP_CHECKS != 'false'
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+        filter: 'blob:none'
 
     - name: Print PR Number and Target Commit ID
       if: env.CAN_SKIP_CHECKS != 'false'
@@ -113,7 +118,11 @@ runs:
       if: env.CAN_SKIP_CHECKS != 'false'
       shell: bash
       run: |
-        if git diff --quiet "origin/${{ steps.get-pr-branch.outputs.prBranch }}"; then
+        # Two commits with the same tree hash have identical content in every
+        # tracked file, and comparing the hashes needs no file content.
+        headTree=$(git rev-parse "HEAD^{tree}")
+        prBranchTree=$(git rev-parse "origin/${{ steps.get-pr-branch.outputs.prBranch }}^{tree}")
+        if [[ "$headTree" == "$prBranchTree" ]]; then
           echo "No differences found. PR branch is identical with this merge queue branch."
         else
           echo "Differences detected. PR branch has been updated after PR was added to merge queue. Setting CAN_SKIP_CHECKS to false."
